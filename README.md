@@ -23,7 +23,7 @@ bin/numericvision images/in/original_01.jpg
 
 ## Using the NumericVision package
 
-```
+```python
 from numericvision import NumericVision
 
 NumericVision.process('images/in/original_01.jpg')
