@@ -15,8 +15,16 @@ brew install opencv
 pip install scikit-image
 ```
 
-## Running NumericVision
+## Running NumericVision from the command line
 
 ```
 bin/numericvision images/in/original_01.jpg
+```
+
+## Using the NumericVision package
+
+```
+from numericvision import NumericVision
+
+NumericVision.process('images/in/original_01.jpg')
 ```
