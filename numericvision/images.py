@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 import numpy as np
 import cv2
 from skimage import exposure
-import colors
-
+import numericvision as nv
 
 def filter(original_image):
     # Initial processing
@@ -19,7 +17,7 @@ def filter(original_image):
     contours_image = np.zeros(original_image.shape, np.uint8)
     contours, hierarchy = cv2.findContours(edged_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     for points, node in zip(contours, hierarchy[0]):
-        cv2.drawContours(contours_image, [points], -1, colors.WHITE, 1)
+        cv2.drawContours(contours_image, [points], -1, nv.RGB_WHITE, 1)
 
     # Secondary processing
     filtered_image = cv2.morphologyEx(contours_image, cv2.MORPH_CLOSE, np.ones((4, 4), np.uint8))
@@ -75,7 +73,6 @@ def four_point_transform(image, tl, tr, br, bl):
 
     # compute the perspective transform matrix and then apply it
     M = cv2.getPerspectiveTransform(rect, dst)
-    warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
+    warped_image = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
 
-    # return the warped image
-    return warped
+    return warped_image

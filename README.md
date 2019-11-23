@@ -1,7 +1,7 @@
-# NumericVision
+# numericvision
 
-NumericVision is a Python 3 package for detecting numeric (seven-segment) displays in images and running perspective
-correction on them using [OpenCV 4](https://opencv.org). The code is intended for demo purposes.
+A Python 3 package for detecting numeric (seven-segment) displays in images and running perspective correction on them
+using [OpenCV 4](https://opencv.org).
 
 ![Demo](images/demo.png)
 
@@ -11,20 +11,22 @@ correction on them using [OpenCV 4](https://opencv.org). The code is intended fo
 brew install opencv
 ```
 
-```
-pip install scikit-image
-```
-
-## Running NumericVision from the command line
+## Installation
 
 ```
-bin/numericvision images/in/original_01.jpg
+pip install numericvision
 ```
 
-## Using the NumericVision package
+## Running from the command line
+
+```
+python -m numericvision image.jpg
+```
+
+## Using the package
 
 ```python
-from numericvision import NumericVision
+from numericvision import detect_displays
 
-NumericVision.process('images/in/original_01.jpg')
+box_sequences = detect_displays('image.jpg')
 ```
