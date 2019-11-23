@@ -9,20 +9,22 @@ See https://github.com/igorm/numericvision for more information
 """
 import os.path
 import datetime
-import importlib_resources as _resources
-from configparser import ConfigParser as _ConfigParser
+import importlib_resources
+from configparser import ConfigParser
 import cv2
-from .images import filter, four_point_transform
+from .images import apply_filters, four_point_transform
 from .contours import Bag
 
 
 __version__ = '0.1.0'
 
 
-_cfg = _ConfigParser()
-with _resources.path('numericvision', 'config.cfg') as _path:
-    _cfg.read(str(_path))
-URL = _cfg.get('tbd', 'test')
+_config = ConfigParser()
+with importlib_resources.path('numericvision', 'config.cfg') as config_path:
+    _config.read(str(config_path))
+BOX_MIN_IMAGE_AREA_PCT = float(_config.get('box', 'min_image_area_pct'))
+BOX_MIN_ASPECT_RATIO = float(_config.get('box', 'min_aspect_ratio'))
+BOX_MAX_ASPECT_RATIO = float(_config.get('box', 'max_aspect_ratio'))
 
 
 RGB_RED = 0, 0, 255
@@ -38,7 +40,7 @@ def detect_displays(image_path, roi_contour=None):
     assert os.path.isfile(image_path), "File [%s] doesn't exist!" % image_path
 
     original_image = cv2.imread(image_path)
-    filtered_image = images.filter(original_image)
+    filtered_image = apply_filters(original_image)
 
     contours, hierarchy = cv2.findContours(filtered_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     bag = Bag(filtered_image, contours, hierarchy[0], roi_contour)
@@ -55,7 +57,7 @@ def detect_transform_dump_displays(image_path, roi_contour=None):
 
     original_image = cv2.imread(image_path)
     cv2.imwrite(out_path + '1.jpg', original_image)
-    filtered_image = images.filter(original_image)
+    filtered_image = apply_filters(original_image)
     cv2.imwrite(out_path + '2.jpg', filtered_image)
 
     contours, hierarchy = cv2.findContours(filtered_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)

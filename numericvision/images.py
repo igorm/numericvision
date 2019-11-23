@@ -3,7 +3,7 @@ import cv2
 from skimage import exposure
 import numericvision as nv
 
-def filter(original_image):
+def apply_filters(original_image):
     # Initial processing
     filtered_image = cv2.bilateralFilter(original_image, 11, 17, 17)
     filtered_image = cv2.GaussianBlur(filtered_image, (3, 3), 0)

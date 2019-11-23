@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import math
+import numericvision as nv
 
 
 class Bag(object):
@@ -23,7 +24,7 @@ class Bag(object):
         self._remove_subsequences()
 
     def _get_image_area(self):
-        return self.image.shape[1] * self.image.shape[0]
+        return float(self.image.shape[1] * self.image.shape[0])
 
     def _set_boxes(self):
         for points, node in zip(self.contours, self.hierarchy):
@@ -35,9 +36,9 @@ class Bag(object):
             box = Box(points)
             is_box_in_roi = self.roi_contour.contains_point(box.contour.c_point) if self.roi_contour else True
             if (box.key not in self.keys_to_boxes
-                and box.contour.area / float(self._get_image_area()) * 100 > 0.01
-                and box.contour.aspect_ratio > 0.1
-                and box.contour.aspect_ratio < 0.8
+                and box.contour.area / self._get_image_area() * 100 > nv.BOX_MIN_IMAGE_AREA_PCT
+                and box.contour.aspect_ratio > nv.BOX_MIN_ASPECT_RATIO
+                and box.contour.aspect_ratio < nv.BOX_MAX_ASPECT_RATIO
                 and is_box_in_roi
             ):
                 self.keys_to_boxes[box.key] = box
