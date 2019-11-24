@@ -1,6 +1,6 @@
 """numericvision detects numeric displays in images using OpenCV
 
-Import `detect_box_sequences` which returns a list of box sequence objects:
+Import `detect_box_sequences` which returns sequences of seven-segment digit boxes:
 
     >>> from numericvision import detect_box_sequences
     >>> box_sequences = detect_box_sequences('image.jpg')
@@ -20,8 +20,8 @@ __version__ = '0.1.0'
 
 
 _config = ConfigParser()
-with importlib_resources.path('numericvision', 'config.cfg') as config_path:
-    _config.read(str(config_path))
+with importlib_resources.path('numericvision', 'config.cfg') as _config_path:
+    _config.read(str(_config_path))
 BOX_MIN_IMAGE_AREA_PCT = float(_config.get('box', 'min_image_area_pct'))
 BOX_MIN_ASPECT_RATIO = float(_config.get('box', 'min_aspect_ratio'))
 BOX_MAX_ASPECT_RATIO = float(_config.get('box', 'max_aspect_ratio'))

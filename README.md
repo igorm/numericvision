@@ -8,19 +8,19 @@ using [OpenCV 4](https://opencv.org).
 ## Dependencies
 
 ```
-brew install opencv
+$ brew install opencv
 ```
 
 ## Installation
 
 ```
-pip install numericvision
+$ pip install numericvision
 ```
 
 ## Running from the command line
 
 ```
-python -m numericvision image.jpg
+$ python -m numericvision image.jpg
 ```
 
 ## Using the package

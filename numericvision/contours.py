@@ -1,3 +1,4 @@
+"""Classes and functions for analyzing image contours and detecting sequences of seven-segment digit boxes"""
 import numpy as np
 import cv2
 import math
@@ -5,15 +6,13 @@ import numericvision as nv
 
 
 class Bag(object):
-
+    """Encapsulates logic which analyzes input image contours and identifies sequences of seven-segment digit boxes."""
     def __init__(self, image, contours, hierarchy, roi_contour=None):
         self.image = image
         self.contours = contours
         self.hierarchy = hierarchy
         self.roi_contour = roi_contour
 
-        self.keys_to_boxes = {}
-        self.box_keys = []
         self.boxes = []
         self.sequences = []
 
@@ -23,10 +22,9 @@ class Bag(object):
         self._set_sequences()
         self._remove_subsequences()
 
-    def _get_image_area(self):
-        return float(self.image.shape[1] * self.image.shape[0])
-
     def _set_boxes(self):
+        """Instantiates a Box for each contour, filters out Boxes which don't meet seven-segment digit criteria."""
+        keys_to_boxes = {}
         for points, node in zip(self.contours, self.hierarchy):
             area = cv2.contourArea(points)
             perimeter = cv2.arcLength(points, True)
@@ -35,24 +33,57 @@ class Bag(object):
 
             box = Box(points)
             is_box_in_roi = self.roi_contour.contains_point(box.contour.c_point) if self.roi_contour else True
-            if (box.key not in self.keys_to_boxes
+            if (box.key not in keys_to_boxes
                 and box.contour.area / self._get_image_area() * 100 > nv.BOX_MIN_IMAGE_AREA_PCT
                 and box.contour.aspect_ratio > nv.BOX_MIN_ASPECT_RATIO
                 and box.contour.aspect_ratio < nv.BOX_MAX_ASPECT_RATIO
                 and is_box_in_roi
             ):
-                self.keys_to_boxes[box.key] = box
+                keys_to_boxes[box.key] = box
 
-        if self.keys_to_boxes:
+        if keys_to_boxes:
             keys = np.array(
-                list(self.keys_to_boxes.keys()),
+                list(keys_to_boxes.keys()),
                 dtype=[('x', int), ('y', int)]
             )
             indices = np.lexsort((keys['x'], keys['y'])) # tb, lr
-            self.box_keys = list(map(tuple, keys[indices]))
-            self.boxes = [self.keys_to_boxes[k] for k in self.box_keys]
+            box_keys = list(map(tuple, keys[indices]))
+            self.boxes = [keys_to_boxes[k] for k in box_keys]
+
+    def _merge_shards(self):
+        """Identifies Boxes representing parts of the same seven-segment digit and glues them together."""
+        shard_box_keys = []
+        for box in self.boxes:
+            if box.key in shard_box_keys:
+                continue
+
+            shard_box = next((b for b in self.boxes if (
+                b.key != box.key
+                and b.is_shard_of(box)
+            )), None)
+            if shard_box:
+                box.merge(shard_box)
+                shard_box_keys.append(shard_box.key)
+
+        self.boxes = [b for b in self.boxes if b.key not in shard_box_keys]
+
+    def _remove_duplicates(self):
+        """Removes duplicate Boxes."""
+        duplicate_box_keys = []
+        for box in self.boxes:
+            if box.key in duplicate_box_keys:
+                continue
+
+            for duplicate_box in (b for b in self.boxes if (
+                b.key != box.key
+                and b.is_duplicate_of(box)
+            )):
+                duplicate_box_keys.append(duplicate_box.key)
+
+        self.boxes = [b for b in self.boxes if b.key not in duplicate_box_keys]
 
     def _set_sequences(self):
+        """Identifies Sequences of Boxes."""
         for box in self.boxes:
             next_box = next((b for b in self.boxes if (
                 b.key != box.key
@@ -93,37 +124,8 @@ class Bag(object):
             and s.get_h_min_max_d_pct() < nv.SEQUENCE_MAX_H_MIN_MAX_D_PCT
         )]
 
-    def _merge_shards(self):
-        shard_box_keys = []
-        for box in self.boxes:
-            if box.key in shard_box_keys:
-                continue
-
-            shard_box = next((b for b in self.boxes if (
-                b.key != box.key
-                and b.is_shard_of(box)
-            )), None)
-            if shard_box:
-                box.merge(shard_box)
-                shard_box_keys.append(shard_box.key)
-
-        self.boxes = [b for b in self.boxes if b.key not in shard_box_keys]
-
-    def _remove_duplicates(self):
-        duplicate_box_keys = []
-        for box in self.boxes:
-            if box.key in duplicate_box_keys:
-                continue
-
-            for duplicate_box in (b for b in self.boxes if (
-                b.key != box.key
-                and b.is_duplicate_of(box)
-            )):
-                duplicate_box_keys.append(duplicate_box.key)
-
-        self.boxes = [b for b in self.boxes if b.key not in duplicate_box_keys]
-
     def _remove_subsequences(self):
+        """Removes overlapping Sequences."""
         subsequence_keys = []
         for sequence in self.sequences:
             if sequence.key in subsequence_keys:
@@ -143,9 +145,12 @@ class Bag(object):
     def get_sequence_count(self):
         return len(self.sequences)
 
+    def _get_image_area(self):
+        return float(self.image.shape[1] * self.image.shape[0])
+
 
 class Sequence(object):
-
+    """Represents a sequence of seven-segment digit boxes."""
     def __init__(self, boxes):
         self.key = boxes[0].key
         self.boxes = boxes
@@ -156,24 +161,29 @@ class Sequence(object):
         self.patched_box_count = 0
 
     def get_top_line(self):
+        """A line drawn through the first and last of the Sequence's Boxes' extreme top points."""
         return extend_line((
             self.boxes[0].source_contour.et_point,
             self.boxes[-1].source_contour.et_point
         ), 2)
 
     def get_bottom_line(self):
+        """A line drawn through the first and last of the Sequence's Boxes' extreme bottom points."""
         return extend_line((
             self.boxes[0].source_contour.eb_point,
             self.boxes[-1].source_contour.eb_point
         ), 2)
 
     def get_left_line(self):
+        """The Sequence's first Box's left vertical line."""
         return self.boxes[0].get_left_vertical_line()
 
     def get_right_line(self):
+        """The Sequence's last Box's right vertical line."""
         return self.boxes[-1].get_right_vertical_line()
 
     def get_contour(self):
+        """A Sequence's contour is a tetragon drawn around the Sequence's Boxes."""
         top_line = self.get_top_line()
         right_line = self.get_right_line()
         bottom_line = self.get_bottom_line()
@@ -186,15 +196,15 @@ class Sequence(object):
             get_intersection_point(bottom_line, left_line),
         )
 
-    def get_extended_contour(self):
+    def get_padded_contour(self, padding):
+        """Pads the Sequence's contour."""
         contour = self.get_contour()
-        i = 5
 
         return Tetragon(
-            (contour.tl_point[0] - i, contour.tl_point[1] - i),
-            (contour.tr_point[0] + i, contour.tr_point[1] - i),
-            (contour.br_point[0] + i, contour.br_point[1] + i),
-            (contour.bl_point[0] - i, contour.bl_point[1] + i)
+            (contour.tl_point[0] - padding, contour.tl_point[1] - padding),
+            (contour.tr_point[0] + padding, contour.tr_point[1] - padding),
+            (contour.br_point[0] + padding, contour.br_point[1] + padding),
+            (contour.bl_point[0] - padding, contour.bl_point[1] + padding)
         )
 
     def get_box_count(self):

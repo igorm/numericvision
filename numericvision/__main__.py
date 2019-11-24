@@ -15,7 +15,7 @@ from numericvision import detect_transform_dump_box_sequences
 # from .contours import Rectangle
 
 
-def main(): # type: () -> None
+def main():
     import sys
     args = sys.argv[1:]
 
