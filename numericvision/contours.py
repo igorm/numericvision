@@ -65,7 +65,7 @@ class Bag(object):
             box.set_sequence_boxes()
 
         for box in sorted(self.boxes, key=lambda b: b.get_sequence_box_count(), reverse=True):
-            if (box.get_sequence_box_count() < 2
+            if (box.get_sequence_box_count() < nv.SEQUENCE_MIN_BOX_COUNT
                 # Any of the boxes is already claimed by another sequence
                 or next((b for b in box.sequence_boxes if b.sequence), None)
             ):
@@ -87,10 +87,10 @@ class Bag(object):
                     sequence.patch_append_box(box)
 
         self.sequences = [s for s in self.sequences if (
-            s.get_box_count() > 2
-            and s.get_distance_to_center_line_avg() < 3
-            and s.get_x_d_min_max_d_pct() < 16
-            and s.get_h_min_max_d_pct() < 20
+            s.get_box_count() > nv.SEQUENCE_MIN_BOX_COUNT
+            and s.get_avg_distance_to_center_line() < nv.SEQUENCE_MAX_AVG_DISTANCE_TO_CENTER_LINE
+            and s.get_x_d_min_max_d_pct() < nv.SEQUENCE_MAX_X_D_MIN_MAX_D_PCT
+            and s.get_h_min_max_d_pct() < nv.SEQUENCE_MAX_H_MIN_MAX_D_PCT
         )]
 
     def _merge_shards(self):
@@ -220,7 +220,7 @@ class Sequence(object):
 
         return x_ds
 
-    def get_x_d_avg(self):
+    def get_avg_x_d(self):
         x_ds = self.get_x_ds()
 
         return sum(x_ds) / float(len(x_ds))
@@ -244,7 +244,7 @@ class Sequence(object):
 
         return get_d_abs_pct(max(hs), min(hs))
 
-    def get_distance_to_center_line_avg(self):
+    def get_avg_distance_to_center_line(self):
         distances = []
         for box in self.boxes[1:-1]:
             distance = get_point_to_line_distance(
@@ -363,7 +363,7 @@ class Box(object):
         if is_patching:
             # Should be twice the x_d of the sequence
             sequence = self.sequence if self.sequence else box.sequence
-            expected_x_d = 2 * sequence.get_x_d_avg()
+            expected_x_d = 2 * sequence.get_avg_x_d()
             min_x_d = expected_x_d - expected_x_d * 0.1
             max_x_d = expected_x_d + expected_x_d * 0.03
 
@@ -401,10 +401,10 @@ class Box(object):
         h_d_abs = abs(a_contour.h - b_contour.h)
 
         return (
-            x_d_abs < 6
-            and y_d_abs < 6
-            and w_d_abs < 6
-            and h_d_abs < 6
+            x_d_abs < nv.BOX_DUPLICATE_MAX_X_D
+            and y_d_abs < nv.BOX_DUPLICATE_MAX_Y_D
+            and w_d_abs < nv.BOX_DUPLICATE_MAX_W_D
+            and h_d_abs < nv.BOX_DUPLICATE_MAX_H_D
         )
 
     def is_shard_of(self, box):
@@ -417,11 +417,11 @@ class Box(object):
         h_d_abs = abs(a_contour.h - b_contour.h)
 
         return (
-            x_d_abs < 8
-            and y_d > 0
-            and abs(a_contour.h - y_d) < 6
-            and w_d_abs < 6
-            and h_d_abs < 6
+            x_d_abs < nv.BOX_SHARD_MAX_X_D
+            and y_d > nv.BOX_SHARD_MIN_Y_D
+            and abs(a_contour.h - y_d) < nv.BOX_SHARD_MAX_H_Y_D
+            and w_d_abs < nv.BOX_SHARD_MAX_W_D
+            and h_d_abs < nv.BOX_SHARD_MAX_H_D
         )
 
     def merge(self, shard_box):

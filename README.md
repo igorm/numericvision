@@ -26,7 +26,7 @@ python -m numericvision image.jpg
 ## Using the package
 
 ```python
-from numericvision import detect_displays
+from numericvision import detect_box_sequences
 
-box_sequences = detect_displays('image.jpg')
+box_sequences = detect_box_sequences('image.jpg')
 ```
