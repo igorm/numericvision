@@ -32,9 +32,10 @@ class Bag(object):
                 continue
 
             box = Box(points)
+            image_area = float(self.image.shape[1] * self.image.shape[0])
             is_box_in_roi = self.roi_contour.contains_point(box.contour.c_point) if self.roi_contour else True
             if (box.key not in keys_to_boxes
-                and box.contour.area / self._get_image_area() * 100 > nv.BOX_MIN_IMAGE_AREA_PCT
+                and box.contour.area / image_area * 100 > nv.BOX_MIN_IMAGE_AREA_PCT
                 and box.contour.aspect_ratio > nv.BOX_MIN_ASPECT_RATIO
                 and box.contour.aspect_ratio < nv.BOX_MAX_ASPECT_RATIO
                 and is_box_in_roi
@@ -51,7 +52,7 @@ class Bag(object):
             self.boxes = [keys_to_boxes[k] for k in box_keys]
 
     def _merge_shards(self):
-        """Identifies Boxes representing parts of the same seven-segment digit and glues them together."""
+        """Identifies Boxes representing parts of the same seven-segment digit and merges them together."""
         shard_box_keys = []
         for box in self.boxes:
             if box.key in shard_box_keys:
@@ -140,13 +141,12 @@ class Bag(object):
         self.sequences = [b for b in self.sequences if b.key not in subsequence_keys]
 
     def get_box_count(self):
+        """The Box count."""
         return len(self.boxes)
 
     def get_sequence_count(self):
+        """The Sequence count."""
         return len(self.sequences)
-
-    def _get_image_area(self):
-        return float(self.image.shape[1] * self.image.shape[0])
 
 
 class Sequence(object):
@@ -161,25 +161,25 @@ class Sequence(object):
         self.patched_box_count = 0
 
     def get_top_line(self):
-        """A line drawn through the first and last of the Sequence's Boxes' extreme top points."""
+        """A line segment drawn through extreme top points of the Sequence's first and last Boxes."""
         return extend_line((
             self.boxes[0].source_contour.et_point,
             self.boxes[-1].source_contour.et_point
         ), 2)
 
     def get_bottom_line(self):
-        """A line drawn through the first and last of the Sequence's Boxes' extreme bottom points."""
+        """A line segment drawn through extreme bottom points of the Sequence's first and last Boxes."""
         return extend_line((
             self.boxes[0].source_contour.eb_point,
             self.boxes[-1].source_contour.eb_point
         ), 2)
 
     def get_left_line(self):
-        """The Sequence's first Box's left vertical line."""
+        """The left vertical line of the Sequence's first Box."""
         return self.boxes[0].get_left_vertical_line()
 
     def get_right_line(self):
-        """The Sequence's last Box's right vertical line."""
+        """The right vertical line of the Sequence's last Box."""
         return self.boxes[-1].get_right_vertical_line()
 
     def get_contour(self):
@@ -208,21 +208,24 @@ class Sequence(object):
         )
 
     def get_box_count(self):
+        """The Box count."""
         return len(self.boxes) + self.patched_box_count
 
     def patch_prepend_box(self, box, patched_box_count=1):
+        """Prepends a Box when patching a Sequence with a missing Box like this: box, missing, box, box."""
         box.sequence = self
         self.boxes.insert(0, box)
         self.patched_box_count += patched_box_count
 
     def patch_append_box(self, box, patched_box_count=1):
+        """Appends a Box when patching a Sequence with a missing Box like this: box, box, missing, box."""
         box.sequence = self
         self.boxes.append(box)
         self.patched_box_count += patched_box_count
 
     def get_x_ds(self):
+        """A list of Boxes' center point x deltas."""
         x_ds = []
-
         for previous_box, box in zip(self.boxes, self.boxes[1:]):
             a_contour = previous_box.backbone_contour
             b_contour = box.backbone_contour
@@ -231,11 +234,13 @@ class Sequence(object):
         return x_ds
 
     def get_avg_x_d(self):
+        """The average Boxes' center point x delta."""
         x_ds = self.get_x_ds()
 
         return sum(x_ds) / float(len(x_ds))
 
     def get_x_d_min_max_d_pct(self):
+        """Percentage difference between max and min Boxes' center point x deltas."""
         x_ds = self.get_x_ds()
 
         if self.patched_box_count > 0:
@@ -244,17 +249,20 @@ class Sequence(object):
             x_ds.append(max_x_d / 2)
             x_ds.append(max_x_d / 2)
 
-        return get_d_abs_pct(max(x_ds), min(x_ds))
+        return get_d_pct(max(x_ds), min(x_ds))
 
     def get_hs(self):
+        """Heights of the Sequence's Boxes."""
         return [b.backbone_contour.h for b in self.boxes]
 
     def get_h_min_max_d_pct(self):
+        """Percentage difference between max and min Boxes' heights."""
         hs = self.get_hs()
 
-        return get_d_abs_pct(max(hs), min(hs))
+        return get_d_pct(max(hs), min(hs))
 
     def get_avg_distance_to_center_line(self):
+        """Average distance from Boxes' center points to the Sequence's center line."""
         distances = []
         for box in self.boxes[1:-1]:
             distance = get_point_to_line_distance(
@@ -266,11 +274,12 @@ class Sequence(object):
         return sum(distances) / float(len(distances))
 
     def is_subsequence_of(self, sequence):
+        """Is overlapping with `sequence`?"""
         return sequence.get_contour().contains_point(self.get_contour().c_point)
 
 
 class Box(object):
-
+    """Represents a seven-segment digit box."""
     def __init__(self, points):
         self.key = None
         self.is_tall_narrow = False
@@ -293,6 +302,7 @@ class Box(object):
         self._set_contours(points)
 
     def _set_contours(self, points, tl_point=None, w=0, h=0):
+        """Sets the Box's contours based on provided points."""
         if tl_point is None:
             x, y, w, h = cv2.boundingRect(points)
             tl_point = x, y
@@ -792,8 +802,9 @@ def get_points(line):
     return points
 
 
-def get_d_abs_pct(a, b):
-    part = abs(float(a - b))
-    whole = float(a)
+def get_d_pct(a, b):
+    """Percentage difference between two values."""
+    d = float(abs(a - b))
+    avg = float((a + b) / 2)
 
-    return round(part / whole * 100)
+    return round(d / avg * 100)
