@@ -1,4 +1,4 @@
-"""Classes and functions for analyzing image contours and detecting sequences of seven-segment digit boxes"""
+"""Classes and functions for analyzing image contours and detecting sequences of seven-segment digit boxes."""
 import numpy as np
 import cv2
 import math
@@ -193,7 +193,7 @@ class Sequence(object):
             get_intersection_point(top_line, left_line),
             get_intersection_point(top_line, right_line),
             get_intersection_point(bottom_line, right_line),
-            get_intersection_point(bottom_line, left_line),
+            get_intersection_point(bottom_line, left_line)
         )
 
     def get_padded_contour(self, padding):
@@ -212,13 +212,13 @@ class Sequence(object):
         return len(self.boxes) + self.patched_box_count
 
     def patch_prepend_box(self, box, patched_box_count=1):
-        """Prepends a Box when patching a Sequence with a missing Box like this: box, missing, box, box."""
+        """Prepends a Box when patching a Sequence with a missing Box: box missing box box."""
         box.sequence = self
         self.boxes.insert(0, box)
         self.patched_box_count += patched_box_count
 
     def patch_append_box(self, box, patched_box_count=1):
-        """Appends a Box when patching a Sequence with a missing Box like this: box, box, missing, box."""
+        """Appends a Box when patching a Sequence with a missing Box: box box missing box."""
         box.sequence = self
         self.boxes.append(box)
         self.patched_box_count += patched_box_count
@@ -274,7 +274,7 @@ class Sequence(object):
         return sum(distances) / float(len(distances))
 
     def is_subsequence_of(self, sequence):
-        """Is overlapping with `sequence`?"""
+        """Is overlapping with the provided Sequence?"""
         return sequence.get_contour().contains_point(self.get_contour().c_point)
 
 
@@ -362,6 +362,9 @@ class Box(object):
             self.is_tall_narrow = True
 
     def _process_sequence_boxes(self, box):
+        """Looks ahead left to right at Boxes following the current Box. If following Boxes meet "next criteria", adds
+        them to sequence_boxes.
+        """
         if not box:
             return
 
@@ -369,13 +372,14 @@ class Box(object):
         self._process_sequence_boxes(box.next)
 
     def is_next_after(self, box, is_patching=False):
+        """Does the current Box meet criteria to be considered next in a sequence after the provided Box?"""
         a_contour = box.backbone_contour
         b_contour = self.backbone_contour
 
         x_d = b_contour.c_point[0] - a_contour.c_point[0]
-        y_d_abs = abs(b_contour.c_point[1] - a_contour.c_point[1])
-        w_d_abs = abs(b_contour.w - a_contour.w)
-        h_d_abs = abs(b_contour.h - a_contour.h)
+        y_d = abs(b_contour.c_point[1] - a_contour.c_point[1])
+        w_d = abs(b_contour.w - a_contour.w)
+        h_d = abs(b_contour.h - a_contour.h)
 
         min_x_d = 0
         max_x_d = 0.95 * a_contour.h
@@ -387,9 +391,9 @@ class Box(object):
             min_x_d = expected_x_d - expected_x_d * 0.1
             max_x_d = expected_x_d + expected_x_d * 0.03
 
-        max_y_d_abs = 0.25 * a_contour.h
-        max_w_d_abs = 0.50 * a_contour.w
-        max_h_d_abs = 0.25 * a_contour.h
+        max_y_d = 0.25 * a_contour.h
+        max_w_d = 0.50 * a_contour.w
+        max_h_d = 0.25 * a_contour.h
 
         is_next = (
             # Main
@@ -398,53 +402,56 @@ class Box(object):
             self.contour.tl_point[0] - box.contour.tr_point[0] >= 0 # Right margin
             # Backbone
             and (x_d > min_x_d and x_d < max_x_d)
-            and y_d_abs < max_y_d_abs
-            and w_d_abs < max_w_d_abs
-            and h_d_abs < max_h_d_abs
+            and y_d < max_y_d
+            and w_d < max_w_d
+            and h_d < max_h_d
         )
 
         # if self.key[0] == 262:
         #     print "(%i, %i) > (%i, %i) = %r" % (box.key[0], box.key[1], self.key[0], self.key[1], is_next)
         #     print "    x_d=%.2f [%.2f, %.2f]" % (x_d, min_x_d, max_x_d)
-        #     print "    y_d_abs=%.2f [%.2f]" % (y_d_abs, max_y_d_abs)
-        #     print "    w_d_abs=%.2f [%.2f]" % (w_d_abs, max_w_d_abs)
+        #     print "    y_d=%.2f [%.2f]" % (y_d, max_y_d)
+        #     print "    w_d=%.2f [%.2f]" % (w_d, max_w_d)
 
         return is_next
 
     def is_duplicate_of(self, box):
+        """Does the current Box meet criteria to be considered a duplicate of the provided Box?"""
         a_contour = box.contour
         b_contour = self.contour
 
-        x_d_abs = abs(b_contour.c_point[0] - a_contour.c_point[0])
-        y_d_abs = abs(b_contour.c_point[1] - a_contour.c_point[1])
-        w_d_abs = abs(a_contour.w - b_contour.w)
-        h_d_abs = abs(a_contour.h - b_contour.h)
+        x_d = abs(b_contour.c_point[0] - a_contour.c_point[0])
+        y_d = abs(b_contour.c_point[1] - a_contour.c_point[1])
+        w_d = abs(a_contour.w - b_contour.w)
+        h_d = abs(a_contour.h - b_contour.h)
 
         return (
-            x_d_abs < nv.BOX_DUPLICATE_MAX_X_D
-            and y_d_abs < nv.BOX_DUPLICATE_MAX_Y_D
-            and w_d_abs < nv.BOX_DUPLICATE_MAX_W_D
-            and h_d_abs < nv.BOX_DUPLICATE_MAX_H_D
+            x_d < nv.BOX_DUPLICATE_MAX_X_D
+            and y_d < nv.BOX_DUPLICATE_MAX_Y_D
+            and w_d < nv.BOX_DUPLICATE_MAX_W_D
+            and h_d < nv.BOX_DUPLICATE_MAX_H_D
         )
 
     def is_shard_of(self, box):
+        """Does the current Box meet criteria to be considered a shard of the provided Box?"""
         a_contour = box.contour
         b_contour = self.contour
 
-        x_d_abs = abs(b_contour.c_point[0] - a_contour.c_point[0])
+        x_d = abs(b_contour.c_point[0] - a_contour.c_point[0])
         y_d = b_contour.c_point[1] - a_contour.c_point[1]
-        w_d_abs = abs(a_contour.w - b_contour.w)
-        h_d_abs = abs(a_contour.h - b_contour.h)
+        w_d = abs(a_contour.w - b_contour.w)
+        h_d = abs(a_contour.h - b_contour.h)
 
         return (
-            x_d_abs < nv.BOX_SHARD_MAX_X_D
+            x_d < nv.BOX_SHARD_MAX_X_D
             and y_d > nv.BOX_SHARD_MIN_Y_D
             and abs(a_contour.h - y_d) < nv.BOX_SHARD_MAX_H_Y_D
-            and w_d_abs < nv.BOX_SHARD_MAX_W_D
-            and h_d_abs < nv.BOX_SHARD_MAX_H_D
+            and w_d < nv.BOX_SHARD_MAX_W_D
+            and h_d < nv.BOX_SHARD_MAX_H_D
         )
 
     def merge(self, shard_box):
+        """Merges contours of the current Box with contours of the shard."""
         x = min(self.contour.tl_point[0], shard_box.contour.bl_point[0])
         y = self.contour.tl_point[1]
         w = max(self.contour.tr_point[0], shard_box.contour.br_point[0]) - x
@@ -453,12 +460,15 @@ class Box(object):
         self._set_contours(shard_box.source_contour.points, (x, y), w, h)
 
     def set_sequence_boxes(self):
+        """Runs the look ahead process of identifying a sequence of "next Boxes"."""
         self._process_sequence_boxes(self)
 
     def get_sequence_box_count(self):
+        """The count of "next Boxes" following the current Box."""
         return len(self.sequence_boxes)
 
     def get_left_vertical_line(self):
+        """A line segment drawn through extreme left points of the Box's source contour."""
         line, i_point, e_point_to_line_distance = self.get_vertical_line_with_context()
 
         if i_point[0] < self.contour.c_point[0]:
@@ -472,6 +482,7 @@ class Box(object):
             )
 
     def get_right_vertical_line(self):
+        """A line segment drawn through extreme right points of the Box's source contour."""
         line, i_point, e_point_to_line_distance = self.get_vertical_line_with_context()
 
         if i_point[0] > self.contour.c_point[0]:
@@ -485,6 +496,7 @@ class Box(object):
             )
 
     def get_vertical_line_with_context(self):
+        """The extended vertical line segment with spacial context."""
         line = self.get_extended_vertical_line()
         e_point = sorted(
             self.source_contour.get_points(),
@@ -499,6 +511,7 @@ class Box(object):
         )
 
     def get_extended_vertical_line(self):
+        """The longest vertical line segment extended to match the height of the Box's contour."""
         a_point, b_point = self.get_vertical_line()
         y_d = b_point[1] - a_point[1]
         extend_factor = (self.contour.h / y_d) * 2
@@ -506,27 +519,16 @@ class Box(object):
         return extend_line((a_point, b_point), extend_factor)
 
     def get_vertical_line(self):
+        """The longest vertical line segment drawn through the Box's source contour."""
         return sorted(
             self.source_contour.get_vertical_lines(),
             key=lambda l: abs(l[1][1] - l[0][1]),
             reverse=True
         )[0]
 
-    def get_segment_points(self, segment_contour):
-        points = []
-
-        for x in range(int(segment_contour.tl_point[0]), int(segment_contour.tr_point[0])):
-            for y in range(int(segment_contour.tl_point[1]), int(segment_contour.bl_point[1])):
-                point = x, y
-
-                if cv2.pointPolygonTest(self.source_contour.points, point, False) > 0:
-                    points.append(point)
-
-        return points
-
 
 class Polygon(object):
-
+    """Represents a polygon contour."""
     def __init__(self, points):
         self.points = points
 
@@ -548,9 +550,11 @@ class Polygon(object):
         self.perimeter = cv2.arcLength(points, True)
 
     def contains_point(self, point):
+        """Is the provided point inside of the Polygon?"""
         return cv2.pointPolygonTest(self.points, point, False) > 0
 
     def contains_contour(self, contour):
+        """Is the provided contour inside of the Polygon?"""
         return (
             self.contains_point(contour.el_point)
             and self.contains_point(contour.et_point)
@@ -559,6 +563,7 @@ class Polygon(object):
         )
 
     def get_vertical_lines(self):
+        """Vertical line segments drawn throug the Polygon's points."""
         points = self.get_points()
         vertical_segments = []
 
@@ -597,21 +602,13 @@ class Polygon(object):
 
         return vertical_segments
 
-    def get_all_points(self):
-        points = self.get_points()
-        all_points = []
-
-        for a_point, b_point in zip(points, points[1:]):
-            all_points.extend(get_points((a_point, b_point)))
-
-        return all_points
-
     def get_points(self):
+        """The points of the Polygon's contour."""
         return [tuple(p[0]) for p in self.points]
 
 
 class Tetragon(Polygon):
-
+    """Represents a tetragon contour. Extends Polygon."""
     def __init__(self, tl_point, tr_point, br_point, bl_point):
         super(Tetragon, self).__init__(np.array([
             [tl_point],
@@ -626,6 +623,7 @@ class Tetragon(Polygon):
         self.bl_point = bl_point
 
     def get_center_line(self):
+        """The horizontal center line segment."""
         return (
             (self.tl_point[0], self.c_point[1]),
             (self.tr_point[0], self.c_point[1])
@@ -633,7 +631,7 @@ class Tetragon(Polygon):
 
 
 class Rectangle(Tetragon):
-
+    """Represents a rectangular contour. Extends Tetragon."""
     def __init__(self, tl_point, w, h):
         x, y = tl_point
 
@@ -646,6 +644,7 @@ class Rectangle(Tetragon):
 
     @classmethod
     def from_tl_point_br_point(cls, tl_point, br_point):
+        """A factory method for creating Rectangles based on TL and BR points."""
         return cls(
             tl_point,
             br_point[0] - tl_point[0],
@@ -654,7 +653,7 @@ class Rectangle(Tetragon):
 
 
 class Point(object):
-
+    """Represents a point."""
     def __init__(self, x=0, y=0):
         self.x = x
         self.y = y
@@ -667,31 +666,32 @@ class Point(object):
 
 
 class Line(object):
-
-    def __init__(self, point_one, point_two):
-        self.point_one = point_one
-        self.point_two = point_two
+    """Represents a line segment."""
+    def __init__(self, a, b):
+        self.point_a = a
+        self.point_b = b
 
     def __str__(self):
-        return 'Line(p1:{},p2:{})'.format(self.point_one, self.point_two)
+        return 'Line(a={},b={})'.format(self.point_a, self.point_b)
 
     @property
     def points(self):
-        return self.point_one, self.point_two
+        return self.point_a, self.point_b
 
     @property
     def length(self):
-        return ((self.point_one.x - self.point_two.x)**2 + (self.point_one.y - self.point_two.y)**2)**0.5
+        return ((self.point_a.x - self.point_b.x) ** 2 + (self.point_a.y - self.point_b.y) ** 2) ** 0.5
 
     def scale(self, factor):
-        self.point_one.x, self.point_two.x = Line.scale_dimension(self.point_one.x, self.point_two.x, factor)
-        self.point_one.y, self.point_two.y = Line.scale_dimension(self.point_one.y, self.point_two.y, factor)
+        self.point_a.x, self.point_b.x = Line.scale_dimension(self.point_a.x, self.point_b.x, factor)
+        self.point_a.y, self.point_b.y = Line.scale_dimension(self.point_a.y, self.point_b.y, factor)
 
     @staticmethod
     def scale_dimension(dim1, dim2, factor):
         base_length = dim2 - dim1
         ret1 = dim1 - (base_length * (factor - 1) / 2)
         ret2 = dim2 + (base_length * (factor - 1) / 2)
+
         return ret1, ret2
 
 
@@ -708,6 +708,7 @@ def _get_line(p1, p2):
     A = (p1[1] - p2[1])
     B = (p2[0] - p1[0])
     C = (p1[0] * p2[1] - p2[0] * p1[1])
+
     return A, B, -C
 
 
@@ -755,12 +756,6 @@ def get_point_to_line_distance(point, line):
         point_to_line_distance = math.hypot(ix - px, iy - py)
 
     return point_to_line_distance
-
-
-def get_m_point(line):
-    a_point, b_point = line
-
-    return (a_point[0] + b_point[0]) / 2, (a_point[1] + b_point[1]) / 2
 
 
 # http://stackoverflow.com/questions/25837544/get-all-points-of-a-straight-line-in-python
