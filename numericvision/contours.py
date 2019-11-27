@@ -162,17 +162,11 @@ class Sequence(object):
 
     def get_top_line(self):
         """A line segment drawn through extreme top points of the Sequence's first and last Boxes."""
-        return extend_line((
-            self.boxes[0].source_contour.et_point,
-            self.boxes[-1].source_contour.et_point
-        ), 2)
+        return extend_line((self.boxes[0].source_contour.et_point, self.boxes[-1].source_contour.et_point))
 
     def get_bottom_line(self):
         """A line segment drawn through extreme bottom points of the Sequence's first and last Boxes."""
-        return extend_line((
-            self.boxes[0].source_contour.eb_point,
-            self.boxes[-1].source_contour.eb_point
-        ), 2)
+        return extend_line((self.boxes[0].source_contour.eb_point, self.boxes[-1].source_contour.eb_point))
 
     def get_left_line(self):
         """The left vertical line of the Sequence's first Box."""
@@ -652,149 +646,104 @@ class Rectangle(Tetragon):
         )
 
 
-class Point(object):
-    """Represents a point."""
-    def __init__(self, x=0, y=0):
-        self.x = x
-        self.y = y
-
-    def __str__(self):
-        return 'Point(x={},y={})'.format(self.x, self.y)
-
-    def __eq__(self, other):
-        return self.x == other.x and self.y == other.y
-
-
 class Line(object):
     """Represents a line segment."""
-    def __init__(self, a, b):
-        self.point_a = a
-        self.point_b = b
+    def __init__(self, a_point, b_point):
+        self.a_point = a_point
+        self.b_point = b_point
 
     def __str__(self):
-        return 'Line(a={},b={})'.format(self.point_a, self.point_b)
+        return "Line(a={},b={})".format(self.a_point, self.b_point)
 
-    @property
-    def points(self):
-        return self.point_a, self.point_b
+    def get_a_b_points(self):
+        """The Line's A, B points."""
+        return self.a_point, self.b_point
 
-    @property
-    def length(self):
-        return ((self.point_a.x - self.point_b.x) ** 2 + (self.point_a.y - self.point_b.y) ** 2) ** 0.5
+    def get_length(self):
+        """The Line's length."""
+        return ((self.a_point[0] - self.b_point[0]) ** 2 + (self.a_point[1] - self.b_point[1]) ** 2) ** 0.5
 
-    def scale(self, factor):
-        self.point_a.x, self.point_b.x = Line.scale_dimension(self.point_a.x, self.point_b.x, factor)
-        self.point_a.y, self.point_b.y = Line.scale_dimension(self.point_a.y, self.point_b.y, factor)
+    def extend(self, factor):
+        """Extends the Line by the provided factor.
+        http://stackoverflow.com/questions/28825461/how-to-extend-a-line-segment-in-both-directions
+        """
+        x_d = self.b_point[0] - self.a_point[0]
+        a_point_x = self.a_point[0] - (x_d * (factor - 1) / 2)
+        b_point_x = self.b_point[0] + (x_d * (factor - 1) / 2)
 
-    @staticmethod
-    def scale_dimension(dim1, dim2, factor):
-        base_length = dim2 - dim1
-        ret1 = dim1 - (base_length * (factor - 1) / 2)
-        ret2 = dim2 + (base_length * (factor - 1) / 2)
+        y_d = self.b_point[1] - self.a_point[1]
+        a_point_y = self.a_point[1] - (y_d * (factor - 1) / 2)
+        b_point_y = self.b_point[1] + (y_d * (factor - 1) / 2)
 
-        return ret1, ret2
+        self.a_point = (a_point_x, a_point_y)
+        self.b_point = (b_point_x, b_point_y)
 
+        return self
 
-# http://stackoverflow.com/questions/28825461/how-to-extend-a-line-segment-in-both-directions
-def extend_line(line, factor):
-    L = Line(Point(line[0][0], line[0][1]), Point(line[1][0], line[1][1]))
-    L.scale(factor)
+    def get_intersection_point_with(self, line):
+        """The intersection point of this Line and the provided Line.
+        http://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines-in-python
+        """
+        xdiff = (self.a_point[0] - self.b_point[0], line.a_point[0] - line.b_point[0])
+        ydiff = (self.a_point[1] - self.b_point[1], line.a_point[1] - line.b_point[1])
 
-    return (int(L.points[0].x), int(L.points[0].y)), (int(L.points[1].x), int(L.points[1].y))
+        def det(a, b):
+            return a[0] * b[1] - a[1] * b[0]
 
+        div = det(xdiff, ydiff)
+        if div == 0:
+           raise Exception('Lines do not intersect')
 
-# http://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines-in-python
-def _get_line(p1, p2):
-    A = (p1[1] - p2[1])
-    B = (p2[0] - p1[0])
-    C = (p1[0] * p2[1] - p2[0] * p1[1])
+        d = (det(self.a_point, self.b_point), det(line.a_point, line.b_point))
+        x = det(d, xdiff) / div
+        y = det(d, ydiff) / div
 
-    return A, B, -C
-
-
-def get_intersection_point(line1, line2):
-    a_point, b_point = line1
-    c_point, d_point = line2
-
-    L1 = _get_line(a_point, b_point)
-    L2 = _get_line(c_point, d_point)
-    D  = L1[0] * L2[1] - L1[1] * L2[0]
-    Dx = L1[2] * L2[1] - L1[1] * L2[2]
-    Dy = L1[0] * L2[2] - L1[2] * L2[0]
-    if D != 0:
-        x = Dx / D
-        y = Dy / D
         return x, y
-    else:
-        return False
+
+    def get_distance_to_point(self, point):
+        """Distance from the provided point to this Line.
+        https://nodedangles.wordpress.com/2010/05/16/measuring-distance-from-a-point-to-a-line-segment
+        """
+        px, py = point
+        x1, y1 = self.a_point
+        x2, y2 = self.b_point
+
+        line_mag = math.hypot(x2 - x1, y2 - y1)
+
+        if line_mag < 0.00000001:
+            return 9999
+
+        u1 = (((px - x1) * (x2 - x1)) + ((py - y1) * (y2 - y1)))
+        u = u1 / (line_mag * line_mag)
+
+        if (u < 0.00001) or (u > 1):
+            ix = math.hypot(x1 - px, y1 - py)
+            iy = math.hypot(x2 - px, y2 - py)
+            if ix > iy:
+                distance = iy
+            else:
+                distance = ix
+        else:
+            ix = x1 + u * (x2 - x1)
+            iy = y1 + u * (y2 - y1)
+            distance = math.hypot(ix - px, iy - py)
+
+        return distance
 
 
-# https://nodedangles.wordpress.com/2010/05/16/measuring-distance-from-a-point-to-a-line-segment
+def extend_line(line, factor=2):
+    """Extends the line segment by the provided factor."""
+    return Line(*line).extend(factor).get_a_b_points()
+
+
+def get_intersection_point(a_line, b_line):
+    """The intersection point of two line segments."""
+    return Line(*a_line).get_intersection_point_with(Line(*b_line))
+
+
 def get_point_to_line_distance(point, line):
-    px, py = point
-    x1, y1 = line[0]
-    x2, y2 = line[1]
-
-    line_mag = math.hypot(x2 - x1, y2 - y1)
-
-    if line_mag < 0.00000001:
-        return 9999
-
-    u1 = (((px - x1) * (x2 - x1)) + ((py - y1) * (y2 - y1)))
-    u = u1 / (line_mag * line_mag)
-
-    if (u < 0.00001) or (u > 1):
-        ix = math.hypot(x1 - px, y1 - py)
-        iy = math.hypot(x2 - px, y2 - py)
-        if ix > iy:
-            point_to_line_distance = iy
-        else:
-            point_to_line_distance = ix
-    else:
-        ix = x1 + u * (x2 - x1)
-        iy = y1 + u * (y2 - y1)
-        point_to_line_distance = math.hypot(ix - px, iy - py)
-
-    return point_to_line_distance
-
-
-# http://stackoverflow.com/questions/25837544/get-all-points-of-a-straight-line-in-python
-def get_points(line):
-    x1, y1 = line[0]
-    x2, y2 = line[1]
-
-    points = []
-    issteep = abs(y2 - y1) > abs(x2 - x1)
-    if issteep:
-        x1, y1 = y1, x1
-        x2, y2 = y2, x2
-    rev = False
-    if x1 > x2:
-        x1, x2 = x2, x1
-        y1, y2 = y2, y1
-        rev = True
-    deltax = x2 - x1
-    deltay = abs(y2 - y1)
-    error = int(deltax / 2)
-    y = y1
-    ystep = None
-    if y1 < y2:
-        ystep = 1
-    else:
-        ystep = -1
-    for x in range(x1, x2 + 1):
-        if issteep:
-            points.append((y, x))
-        else:
-            points.append((x, y))
-        error -= deltay
-        if error < 0:
-            y += ystep
-            error += deltax
-    # Reverse the list if the coordinates were reversed
-    if rev:
-        points.reverse()
-    return points
+    """Distance from the provided point to the line segment."""
+    return Line(*line).get_distance_to_point(point)
 
 
 def get_d_pct(a, b):
