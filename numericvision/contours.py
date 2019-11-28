@@ -35,9 +35,7 @@ class Bag:
             box = Box(points)
             image_area = float(self.image.shape[1] * self.image.shape[0])
             is_box_in_roi = (
-                self.roi_contour.contains_point(box.contour.c_point)
-                if self.roi_contour
-                else True
+                self.roi_contour.contains_point(box.contour.c_point) if self.roi_contour else True
             )
             if (
                 box.key not in keys_to_boxes
@@ -62,8 +60,7 @@ class Bag:
                 continue
 
             shard_box = next(
-                (b for b in self.boxes if (b.key != box.key and b.is_shard_of(box))),
-                None,
+                (b for b in self.boxes if (b.key != box.key and b.is_shard_of(box))), None,
             )
             if shard_box:
                 box.merge(shard_box)
@@ -89,8 +86,7 @@ class Bag:
         """Identifies Sequences of Boxes."""
         for box in self.boxes:
             next_box = next(
-                (b for b in self.boxes if (b.key != box.key and b.is_next_after(box))),
-                None,
+                (b for b in self.boxes if (b.key != box.key and b.is_next_after(box))), None,
             )
             if next_box:
                 box.next = next_box
@@ -98,9 +94,7 @@ class Bag:
         for box in (b for b in self.boxes if b.next):
             box.set_sequence_boxes()
 
-        for box in sorted(
-            self.boxes, key=lambda b: b.get_sequence_box_count(), reverse=True
-        ):
+        for box in sorted(self.boxes, key=lambda b: b.get_sequence_box_count(), reverse=True):
             if (
                 box.get_sequence_box_count() < nv.SEQ_MIN_BOX_COUNT
                 # Any of the boxes is already claimed by another sequence
@@ -173,21 +167,13 @@ class Sequence:
 
     def get_top_line(self):
         """A line segment drawn through extreme top points of the Sequence's first and last Boxes."""
-        return extend_line(
-            (
-                self.boxes[0].source_contour.et_point,
-                self.boxes[-1].source_contour.et_point,
-            )
-        )
+        line = (self.boxes[0].source_contour.et_point, self.boxes[-1].source_contour.et_point)
+        return extend_line(line)
 
     def get_bottom_line(self):
         """A line segment drawn through extreme bottom points of the Sequence's first and last Boxes."""
-        return extend_line(
-            (
-                self.boxes[0].source_contour.eb_point,
-                self.boxes[-1].source_contour.eb_point,
-            )
-        )
+        line = (self.boxes[0].source_contour.eb_point, self.boxes[-1].source_contour.eb_point)
+        return extend_line(line)
 
     def get_left_line(self):
         """The left vertical line of the Sequence's first Box."""
@@ -336,18 +322,10 @@ class Box:
             self.backbone_contour = Rectangle((x + 2 / 3 * w, y), 1 / 3 * w, h)
             self.tl_contour = Rectangle((x, y + 1 / 7 * h), 1 / 3 * w, 2 / 7 * h)
             self.t_contour = Rectangle((x + 1 / 3 * w, y), 1 / 3 * w, 1 / 7 * h)
-            self.tr_contour = Rectangle(
-                (x + 2 / 3 * w, y + 1 / 7 * h), 1 / 3 * w, 2 / 7 * h
-            )
-            self.c_contour = Rectangle(
-                (x + 1 / 3 * w, y + 3 / 7 * h), 1 / 3 * w, 1 / 7 * h
-            )
-            self.br_contour = Rectangle(
-                (x + 2 / 3 * w, y + 4 / 7 * h), 1 / 3 * w, 2 / 7 * h
-            )
-            self.b_contour = Rectangle(
-                (x + 1 / 3 * w, y + 6 / 7 * h), 1 / 3 * w, 1 / 7 * h
-            )
+            self.tr_contour = Rectangle((x + 2 / 3 * w, y + 1 / 7 * h), 1 / 3 * w, 2 / 7 * h)
+            self.c_contour = Rectangle((x + 1 / 3 * w, y + 3 / 7 * h), 1 / 3 * w, 1 / 7 * h)
+            self.br_contour = Rectangle((x + 2 / 3 * w, y + 4 / 7 * h), 1 / 3 * w, 2 / 7 * h)
+            self.b_contour = Rectangle((x + 1 / 3 * w, y + 6 / 7 * h), 1 / 3 * w, 1 / 7 * h)
             self.bl_contour = Rectangle((x, y + 4 / 7 * h), 1 / 3 * w, 2 / 7 * h)
         else:
             self.backbone_contour = self.contour
@@ -655,8 +633,7 @@ class Line:
     def get_length(self):
         """The Line's length."""
         return (
-            (self.a_point[0] - self.b_point[0]) ** 2
-            + (self.a_point[1] - self.b_point[1]) ** 2
+            (self.a_point[0] - self.b_point[0]) ** 2 + (self.a_point[1] - self.b_point[1]) ** 2
         ) ** 0.5
 
     def extend(self, factor):
