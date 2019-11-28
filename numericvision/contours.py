@@ -1,12 +1,13 @@
 """Classes and functions for analyzing image contours and detecting sequences of seven-segment digit boxes."""
+import math
 import numpy as np
 import cv2
-import math
 import numericvision as nv
 
 
-class Bag(object):
+class Bag:
     """Encapsulates logic which analyzes input image contours and identifies sequences of seven-segment digit boxes."""
+
     def __init__(self, image, contours, hierarchy, roi_contour=None):
         self.image = image
         self.contours = contours
@@ -33,8 +34,13 @@ class Bag(object):
 
             box = Box(points)
             image_area = float(self.image.shape[1] * self.image.shape[0])
-            is_box_in_roi = self.roi_contour.contains_point(box.contour.c_point) if self.roi_contour else True
-            if (box.key not in keys_to_boxes
+            is_box_in_roi = (
+                self.roi_contour.contains_point(box.contour.c_point)
+                if self.roi_contour
+                else True
+            )
+            if (
+                box.key not in keys_to_boxes
                 and box.contour.area / image_area * 100 > nv.BOX_MIN_IMAGE_AREA_PCT
                 and box.contour.aspect_ratio > nv.BOX_MIN_ASPECT_RATIO
                 and box.contour.aspect_ratio < nv.BOX_MAX_ASPECT_RATIO
@@ -43,11 +49,8 @@ class Bag(object):
                 keys_to_boxes[box.key] = box
 
         if keys_to_boxes:
-            keys = np.array(
-                list(keys_to_boxes.keys()),
-                dtype=[('x', int), ('y', int)]
-            )
-            indices = np.lexsort((keys['x'], keys['y'])) # tb, lr
+            keys = np.array(list(keys_to_boxes.keys()), dtype=[("x", int), ("y", int)])
+            indices = np.lexsort((keys["x"], keys["y"]))  # tb, lr
             box_keys = list(map(tuple, keys[indices]))
             self.boxes = [keys_to_boxes[k] for k in box_keys]
 
@@ -58,10 +61,10 @@ class Bag(object):
             if box.key in shard_box_keys:
                 continue
 
-            shard_box = next((b for b in self.boxes if (
-                b.key != box.key
-                and b.is_shard_of(box)
-            )), None)
+            shard_box = next(
+                (b for b in self.boxes if (b.key != box.key and b.is_shard_of(box))),
+                None,
+            )
             if shard_box:
                 box.merge(shard_box)
                 shard_box_keys.append(shard_box.key)
@@ -75,10 +78,9 @@ class Bag(object):
             if box.key in duplicate_box_keys:
                 continue
 
-            for duplicate_box in (b for b in self.boxes if (
-                b.key != box.key
-                and b.is_duplicate_of(box)
-            )):
+            for duplicate_box in (
+                b for b in self.boxes if (b.key != box.key and b.is_duplicate_of(box))
+            ):
                 duplicate_box_keys.append(duplicate_box.key)
 
         self.boxes = [b for b in self.boxes if b.key not in duplicate_box_keys]
@@ -86,18 +88,21 @@ class Bag(object):
     def _set_sequences(self):
         """Identifies Sequences of Boxes."""
         for box in self.boxes:
-            next_box = next((b for b in self.boxes if (
-                b.key != box.key
-                and b.is_next_after(box)
-            )), None)
+            next_box = next(
+                (b for b in self.boxes if (b.key != box.key and b.is_next_after(box))),
+                None,
+            )
             if next_box:
                 box.next = next_box
 
         for box in (b for b in self.boxes if b.next):
             box.set_sequence_boxes()
 
-        for box in sorted(self.boxes, key=lambda b: b.get_sequence_box_count(), reverse=True):
-            if (box.get_sequence_box_count() < nv.SEQUENCE_MIN_BOX_COUNT
+        for box in sorted(
+            self.boxes, key=lambda b: b.get_sequence_box_count(), reverse=True
+        ):
+            if (
+                box.get_sequence_box_count() < nv.SEQ_MIN_BOX_COUNT
                 # Any of the boxes is already claimed by another sequence
                 or next((b for b in box.sequence_boxes if b.sequence), None)
             ):
@@ -118,12 +123,16 @@ class Bag(object):
                 if box.is_next_after(sequence.boxes[-1], True):
                     sequence.patch_append_box(box)
 
-        self.sequences = [s for s in self.sequences if (
-            s.get_box_count() > nv.SEQUENCE_MIN_BOX_COUNT
-            and s.get_avg_distance_to_center_line() < nv.SEQUENCE_MAX_AVG_DISTANCE_TO_CENTER_LINE
-            and s.get_x_d_min_max_d_pct() < nv.SEQUENCE_MAX_X_D_MIN_MAX_D_PCT
-            and s.get_h_min_max_d_pct() < nv.SEQUENCE_MAX_H_MIN_MAX_D_PCT
-        )]
+        self.sequences = [
+            s
+            for s in self.sequences
+            if (
+                s.get_box_count() > nv.SEQ_MIN_BOX_COUNT
+                and s.get_avg_distance_to_center_line() < nv.SEQ_MAX_AVG_DISTANCE_TO_CENTER_LINE
+                and s.get_x_d_min_max_d_pct() < nv.SEQ_MAX_X_D_MIN_MAX_D_PCT
+                and s.get_h_min_max_d_pct() < nv.SEQ_MAX_H_MIN_MAX_D_PCT
+            )
+        ]
 
     def _remove_subsequences(self):
         """Removes overlapping Sequences."""
@@ -132,10 +141,11 @@ class Bag(object):
             if sequence.key in subsequence_keys:
                 continue
 
-            for subsequence in (s for s in self.sequences if (
-                s.key != sequence.key
-                and s.is_subsequence_of(sequence)
-            )):
+            for subsequence in (
+                s
+                for s in self.sequences
+                if (s.key != sequence.key and s.is_subsequence_of(sequence))
+            ):
                 subsequence_keys.append(subsequence.key)
 
         self.sequences = [b for b in self.sequences if b.key not in subsequence_keys]
@@ -149,8 +159,9 @@ class Bag(object):
         return len(self.sequences)
 
 
-class Sequence(object):
+class Sequence:
     """Represents a sequence of seven-segment digit boxes."""
+
     def __init__(self, boxes):
         self.key = boxes[0].key
         self.boxes = boxes
@@ -162,11 +173,21 @@ class Sequence(object):
 
     def get_top_line(self):
         """A line segment drawn through extreme top points of the Sequence's first and last Boxes."""
-        return extend_line((self.boxes[0].source_contour.et_point, self.boxes[-1].source_contour.et_point))
+        return extend_line(
+            (
+                self.boxes[0].source_contour.et_point,
+                self.boxes[-1].source_contour.et_point,
+            )
+        )
 
     def get_bottom_line(self):
         """A line segment drawn through extreme bottom points of the Sequence's first and last Boxes."""
-        return extend_line((self.boxes[0].source_contour.eb_point, self.boxes[-1].source_contour.eb_point))
+        return extend_line(
+            (
+                self.boxes[0].source_contour.eb_point,
+                self.boxes[-1].source_contour.eb_point,
+            )
+        )
 
     def get_left_line(self):
         """The left vertical line of the Sequence's first Box."""
@@ -187,7 +208,7 @@ class Sequence(object):
             get_intersection_point(top_line, left_line),
             get_intersection_point(top_line, right_line),
             get_intersection_point(bottom_line, right_line),
-            get_intersection_point(bottom_line, left_line)
+            get_intersection_point(bottom_line, left_line),
         )
 
     def get_padded_contour(self, padding):
@@ -198,7 +219,7 @@ class Sequence(object):
             (contour.tl_point[0] - padding, contour.tl_point[1] - padding),
             (contour.tr_point[0] + padding, contour.tr_point[1] - padding),
             (contour.br_point[0] + padding, contour.br_point[1] + padding),
-            (contour.bl_point[0] - padding, contour.bl_point[1] + padding)
+            (contour.bl_point[0] - padding, contour.bl_point[1] + padding),
         )
 
     def get_box_count(self):
@@ -261,7 +282,7 @@ class Sequence(object):
         for box in self.boxes[1:-1]:
             distance = get_point_to_line_distance(
                 box.contour.c_point,
-                (self.boxes[0].contour.c_point, self.boxes[-1].contour.c_point)
+                (self.boxes[0].contour.c_point, self.boxes[-1].contour.c_point),
             )
             distances.append(distance)
 
@@ -272,8 +293,9 @@ class Sequence(object):
         return sequence.get_contour().contains_point(self.get_contour().c_point)
 
 
-class Box(object):
+class Box:
     """Represents a seven-segment digit box."""
+
     def __init__(self, points):
         self.key = None
         self.is_tall_narrow = False
@@ -308,49 +330,25 @@ class Box(object):
         self.contour = Rectangle(tl_point, w, h)
         self.key = self.contour.c_point
 
-        if self.contour.aspect_ratio > 0.4:
+        if self.contour.aspect_ratio > nv.BOX_MAX_TALL_NARROW_ASPECT_RATIO:
             x, y = tl_point
 
-            self.backbone_contour = Rectangle(
-                (x + 2 / 3 * w, y),
-                1 / 3 * w,
-                h
-            )
-            self.tl_contour = Rectangle(
-                (x, y + 1 / 7 * h),
-                1 / 3 * w,
-                2 / 7 * h
-            )
-            self.t_contour = Rectangle(
-                (x + 1 / 3 * w, y),
-                1 / 3 * w,
-                1 / 7 * h
-            )
+            self.backbone_contour = Rectangle((x + 2 / 3 * w, y), 1 / 3 * w, h)
+            self.tl_contour = Rectangle((x, y + 1 / 7 * h), 1 / 3 * w, 2 / 7 * h)
+            self.t_contour = Rectangle((x + 1 / 3 * w, y), 1 / 3 * w, 1 / 7 * h)
             self.tr_contour = Rectangle(
-                (x + 2 / 3 * w, y + 1 / 7 * h),
-                1 / 3 * w,
-                2 / 7 * h
+                (x + 2 / 3 * w, y + 1 / 7 * h), 1 / 3 * w, 2 / 7 * h
             )
             self.c_contour = Rectangle(
-                (x + 1 / 3 * w, y + 3 / 7 * h),
-                1 / 3 * w,
-                1 / 7 * h
+                (x + 1 / 3 * w, y + 3 / 7 * h), 1 / 3 * w, 1 / 7 * h
             )
             self.br_contour = Rectangle(
-                (x + 2 / 3 * w, y + 4 / 7 * h),
-                1 / 3 * w,
-                2 / 7 * h
+                (x + 2 / 3 * w, y + 4 / 7 * h), 1 / 3 * w, 2 / 7 * h
             )
             self.b_contour = Rectangle(
-                (x + 1 / 3 * w, y + 6 / 7 * h),
-                1 / 3 * w,
-                1 / 7 * h
+                (x + 1 / 3 * w, y + 6 / 7 * h), 1 / 3 * w, 1 / 7 * h
             )
-            self.bl_contour = Rectangle(
-                (x, y + 4 / 7 * h),
-                1 / 3 * w,
-                2 / 7 * h
-            )
+            self.bl_contour = Rectangle((x, y + 4 / 7 * h), 1 / 3 * w, 2 / 7 * h)
         else:
             self.backbone_contour = self.contour
             self.is_tall_narrow = True
@@ -393,7 +391,7 @@ class Box(object):
             # Main
             # cv2.pointPolygonTest(box.contour.points, self.contour.c_point, False) < 0
             # and cv2.pointPolygonTest(self.contour.points, box.contour.c_point, False) < 0
-            self.contour.tl_point[0] - box.contour.tr_point[0] >= 0 # Right margin
+            self.contour.tl_point[0] - box.contour.tr_point[0] >= 0  # Right margin
             # Backbone
             and (x_d > min_x_d and x_d < max_x_d)
             and y_d < max_y_d
@@ -472,7 +470,7 @@ class Box(object):
 
             return (
                 (int(a_point[0] - e_point_to_line_distance), a_point[1]),
-                (int(b_point[0] - e_point_to_line_distance), b_point[1])
+                (int(b_point[0] - e_point_to_line_distance), b_point[1]),
             )
 
     def get_right_vertical_line(self):
@@ -486,7 +484,7 @@ class Box(object):
 
             return (
                 (int(a_point[0] + e_point_to_line_distance), a_point[1]),
-                (int(b_point[0] + e_point_to_line_distance), b_point[1])
+                (int(b_point[0] + e_point_to_line_distance), b_point[1]),
             )
 
     def get_vertical_line_with_context(self):
@@ -495,7 +493,7 @@ class Box(object):
         e_point = sorted(
             self.source_contour.get_points(),
             key=lambda p: get_point_to_line_distance(p, line),
-            reverse=True
+            reverse=True,
         )[0]
 
         return (
@@ -517,12 +515,13 @@ class Box(object):
         return sorted(
             self.source_contour.get_vertical_lines(),
             key=lambda l: abs(l[1][1] - l[0][1]),
-            reverse=True
+            reverse=True,
         )[0]
 
 
-class Polygon(object):
+class Polygon:
     """Represents a polygon contour."""
+
     def __init__(self, points):
         self.points = points
 
@@ -533,9 +532,13 @@ class Polygon(object):
 
         self.moments = cv2.moments(points)
         self.c_point = (
-            int(self.moments['m10'] / self.moments['m00']),
-            int(self.moments['m01'] / self.moments['m00'])
-        ) if self.moments['m00'] != 0 else None
+            (
+                int(self.moments["m10"] / self.moments["m00"]),
+                int(self.moments["m01"] / self.moments["m00"]),
+            )
+            if self.moments["m00"] != 0
+            else None
+        )
 
         self.w = self.er_point[0] - self.el_point[0]
         self.h = self.eb_point[1] - self.et_point[1]
@@ -570,10 +573,9 @@ class Polygon(object):
 
             segment = [a_point]
 
-            for b_point in points[i + 2:]:
-                if ((vertical_segments and b_point in vertical_segments[-1])
-                    or abs(b_point[1] - a_point[1]) < 5
-                ):
+            for b_point in points[i + 2 :]:
+                y_d = abs(b_point[1] - a_point[1])
+                if (vertical_segments and b_point in vertical_segments[-1]) or y_d < 5:
                     break
 
                 j = points.index(b_point)
@@ -603,13 +605,11 @@ class Polygon(object):
 
 class Tetragon(Polygon):
     """Represents a tetragon contour. Extends Polygon."""
+
     def __init__(self, tl_point, tr_point, br_point, bl_point):
-        super(Tetragon, self).__init__(np.array([
-            [tl_point],
-            [tr_point],
-            [br_point],
-            [bl_point],
-        ], dtype=np.int32))
+        super(Tetragon, self).__init__(
+            np.array([[tl_point], [tr_point], [br_point], [bl_point],], dtype=np.int32)
+        )
 
         self.tl_point = tl_point
         self.tr_point = tr_point
@@ -620,34 +620,27 @@ class Tetragon(Polygon):
         """The horizontal center line segment."""
         return (
             (self.tl_point[0], self.c_point[1]),
-            (self.tr_point[0], self.c_point[1])
+            (self.tr_point[0], self.c_point[1]),
         )
 
 
 class Rectangle(Tetragon):
     """Represents a rectangular contour. Extends Tetragon."""
+
     def __init__(self, tl_point, w, h):
         x, y = tl_point
 
-        super(Rectangle, self).__init__(
-            (x, y),
-            (x + w, y),
-            (x + w, y + h),
-            (x, y + h)
-        )
+        super(Rectangle, self).__init__((x, y), (x + w, y), (x + w, y + h), (x, y + h))
 
     @classmethod
     def from_tl_point_br_point(cls, tl_point, br_point):
         """A factory method for creating Rectangles based on TL and BR points."""
-        return cls(
-            tl_point,
-            br_point[0] - tl_point[0],
-            br_point[1] - tl_point[1]
-        )
+        return cls(tl_point, br_point[0] - tl_point[0], br_point[1] - tl_point[1])
 
 
-class Line(object):
+class Line:
     """Represents a line segment."""
+
     def __init__(self, a_point, b_point):
         self.a_point = a_point
         self.b_point = b_point
@@ -661,7 +654,10 @@ class Line(object):
 
     def get_length(self):
         """The Line's length."""
-        return ((self.a_point[0] - self.b_point[0]) ** 2 + (self.a_point[1] - self.b_point[1]) ** 2) ** 0.5
+        return (
+            (self.a_point[0] - self.b_point[0]) ** 2
+            + (self.a_point[1] - self.b_point[1]) ** 2
+        ) ** 0.5
 
     def extend(self, factor):
         """Extends the Line by the provided factor.
@@ -692,7 +688,7 @@ class Line(object):
 
         div = det(xdiff, ydiff)
         if div == 0:
-           raise Exception('Lines do not intersect')
+            raise Exception("Lines do not intersect")
 
         d = (det(self.a_point, self.b_point), det(line.a_point, line.b_point))
         x = det(d, xdiff) / div
@@ -713,7 +709,7 @@ class Line(object):
         if line_mag < 0.00000001:
             return 9999
 
-        u1 = (((px - x1) * (x2 - x1)) + ((py - y1) * (y2 - y1)))
+        u1 = ((px - x1) * (x2 - x1)) + ((py - y1) * (y2 - y1))
         u = u1 / (line_mag * line_mag)
 
         if (u < 0.00001) or (u > 1):
