@@ -3,7 +3,7 @@
 A Python 3 package for detecting numeric (seven-segment) displays in images and running perspective correction on them
 using [OpenCV 4](https://opencv.org).
 
-![Demo](images/demo.png)
+![Demo](tests/demo.png)
 
 ## Dependencies
 

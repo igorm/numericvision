@@ -22,6 +22,7 @@ __version__ = "0.1.0"
 _config = ConfigParser()
 with importlib_resources.path("numericvision", "config.cfg") as _config_path:
     _config.read(str(_config_path))
+
 BOX_MIN_IMAGE_AREA_PCT = float(_config.get("box", "min_image_area_pct"))
 BOX_MIN_ASPECT_RATIO = float(_config.get("box", "min_aspect_ratio"))
 BOX_MAX_ASPECT_RATIO = float(_config.get("box", "max_aspect_ratio"))
@@ -82,7 +83,7 @@ def detect_transform_dump_box_sequences(image_path, roi_contour=None):
     contours, hierarchy = cv2.findContours(filtered_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     bag = Bag(filtered_image, contours, hierarchy[0], roi_contour)
 
-    print("%i/%i" % (len(contours), bag.get_box_count()))
+    print("%i/%i/%i" % (len(contours), bag.get_box_count(), len(bag.sequences)))
 
     contours_image = cv2.imread(image_path)
     if roi_contour:
@@ -101,7 +102,7 @@ def detect_transform_dump_box_sequences(image_path, roi_contour=None):
         )
         cv2.putText(
             contours_image,
-            "(%i,%i)" % sequence.key,
+            "(%i, %i)" % sequence.key,
             sequence.boxes[-1].contour.c_point,
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
@@ -109,12 +110,12 @@ def detect_transform_dump_box_sequences(image_path, roi_contour=None):
             thickness,
         )
         print(
-            "%i(%i/%.2f)"
-            % (sequence.key[0], sequence.get_box_count(), sequence.get_h_min_max_d_pct(),)
+            "(%i, %i) %i/%.2f"
+            % (*sequence.key, sequence.get_box_count(), sequence.get_h_min_max_d_pct(),)
         )
 
         for box in sequence.boxes:
-            # cv2.drawContours(contours_image, [box.contour.points], -1, RGB_RED, thickness)
+            cv2.drawContours(contours_image, [box.contour.points], -1, RGB_RED, thickness)
             cv2.circle(contours_image, box.contour.c_point, 1, color, thickness)
 
         contour = sequence.get_contour()

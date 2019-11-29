@@ -157,12 +157,11 @@ class Sequence:
     """Represents a sequence of seven-segment digit boxes."""
 
     def __init__(self, boxes):
-        self.key = boxes[0].key
         self.boxes = boxes
-
         for box in boxes:
             box.sequence = self
 
+        self.key = self.get_contour().c_point
         self.patched_box_count = 0
 
     def get_top_line(self):
