@@ -10,7 +10,7 @@ out primary contours and bridge gaps between digit segments (see `images.apply_f
 all resulting contours are analyzed by comparing their geometric properties to a set of criteria
 which define what it means for a contour to resemble a seven-segment digit. Lots of assumptions are
 being made here (see `config.cfg`). A contour resembling a seven-segment digit is used to
-instantiate `Box` objects. Several Boxes lined up in a row make up a box `Sequence`. Sequences are
+instantiate a `Box` object. Several boxes lined up in a row make up a box `Sequence`. Sequences are
 contained in a `Bag`.
 
 In other words, raw contours serve as input for an object detection pipeline which produces results
