@@ -29,5 +29,5 @@ setup(
     packages=["numericvision"],
     include_package_data=True,
     install_requires=["importlib_resources", "scikit-image"],
-    entry_points={"console_scripts": ["numericvision.__main__:main"]},
+    entry_points={"console_scripts": ["igorm=numericvision.__main__:main"]},
 )
