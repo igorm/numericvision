@@ -40,4 +40,3 @@ box_sequences = detect_box_sequences("image.jpg")
 ```
 $ python -m numericvision image.jpg
 ```
-f
