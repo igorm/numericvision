@@ -16,6 +16,8 @@ contained in a `Bag`.
 In other words, raw contours serve as input for an object detection pipeline which produces results
 in the form of a crawlable object tree.
 
+![Demo](tests/demo.png)
+
 ## Installation
 
 ```
