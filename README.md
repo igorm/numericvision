@@ -2,7 +2,7 @@
 
 A Python 3 package for detecting
 [numeric (seven-segment) displays](https://en.wikipedia.org/wiki/Seven-segment_display) in images
-and running (perspective correction)[https://en.wikipedia.org/wiki/Perspective_control] on them
+and running [perspective correction](https://en.wikipedia.org/wiki/Perspective_control) on them
 using [OpenCV 4](https://opencv.org).
 
 `detect_box_sequences()` first applies a series of filters to the input image to reduce noise, bring
