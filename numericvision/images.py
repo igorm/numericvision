@@ -48,7 +48,7 @@ def crop(image, contour):
 
 
 def four_point_transform(image, tl, tr, br, bl):
-    """Performs perspective correction on an area of the provided image.
+    """Performs perspective correction on the area within the provided rectangle.
     http://www.pyimagesearch.com/2014/08/25/4-point-opencv-getperspective-transform-example
     """
     rect = np.array([tl, tr, br, bl], dtype="float32")
