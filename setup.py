@@ -17,6 +17,8 @@ setup(
     author="Igor Myroshnichenko",
     author_email="imyroshnichenko@gmail.com",
     license="Apache-2.0",
+    keywords=["opencv", "object detection", "computer vision", "image analysis"],
+    python_requires=">=3.6",
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
@@ -24,7 +26,6 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Topic :: Scientific/Engineering :: Image Recognition",
     ],
     packages=["numericvision"],
     include_package_data=True,

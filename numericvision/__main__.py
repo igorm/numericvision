@@ -1,4 +1,4 @@
-"""numericvision detects numeric displays in images using OpenCV
+"""NumericVision detects numeric displays in images using OpenCV
 
 Usage:
 ------
@@ -10,6 +10,7 @@ More information:
 
 - https://github.com/igorm/numericvision
 - https://pypi.org/project/numericvision
+- https://myrosh.com/object-detection-images-opencv-python-numericvision-seven-segment-displays
 """
 import sys
 from numericvision import detect_transform_dump_box_sequences

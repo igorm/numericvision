@@ -18,8 +18,8 @@ class Bag:
         self.sequences = []
 
         self._set_boxes()
-        self._merge_shards()
-        self._remove_duplicates()
+        self._merge_shard_boxes()
+        self._remove_duplicate_boxes()
         self._set_sequences()
         self._remove_subsequences()
 
@@ -52,7 +52,7 @@ class Bag:
             box_keys = list(map(tuple, keys[indices]))
             self.boxes = [keys_to_boxes[k] for k in box_keys]
 
-    def _merge_shards(self):
+    def _merge_shard_boxes(self):
         """Identifies Boxes representing parts of the same seven-segment digit and merges them together."""
         shard_box_keys = []
         for box in self.boxes:
@@ -68,7 +68,7 @@ class Bag:
 
         self.boxes = [b for b in self.boxes if b.key not in shard_box_keys]
 
-    def _remove_duplicates(self):
+    def _remove_duplicate_boxes(self):
         """Removes duplicate Boxes."""
         duplicate_box_keys = []
         for box in self.boxes:

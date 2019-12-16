@@ -1,11 +1,13 @@
-"""numericvision detects numeric displays in images using OpenCV
+"""NumericVision detects numeric displays in images using OpenCV
 
 Import `detect_box_sequences` which returns sequences of seven-segment digit boxes:
 
     >>> from numericvision import detect_box_sequences
     >>> box_sequences = detect_box_sequences("image.jpg")
 
-See https://github.com/igorm/numericvision for more information
+See https://github.com/igorm/numericvision and
+https://myrosh.com/object-detection-images-opencv-python-numericvision-seven-segment-displays
+for more information
 """
 import os.path
 import datetime
