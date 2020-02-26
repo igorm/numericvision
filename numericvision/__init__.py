@@ -94,7 +94,7 @@ def detect_transform_dump_box_sequences(image_path, roi_contour=None):
     color = RGB_GREEN
     thickness = 1
     for sequence in bag.sequences:
-        cv2.drawContours(contours_image, [sequence.get_contour().points], -1, color, thickness)
+        cv2.drawContours(contours_image, [sequence.contour.points], -1, color, thickness)
         cv2.line(
             contours_image,
             sequence.boxes[0].contour.c_point,
@@ -120,7 +120,7 @@ def detect_transform_dump_box_sequences(image_path, roi_contour=None):
             cv2.drawContours(contours_image, [box.contour.points], -1, RGB_RED, thickness)
             cv2.circle(contours_image, box.contour.c_point, 1, color, thickness)
 
-        contour = sequence.get_contour()
+        contour = sequence.contour
         transformed_image = four_point_transform(
             original_image, contour.tl_point, contour.tr_point, contour.br_point, contour.bl_point
         )

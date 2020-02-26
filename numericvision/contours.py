@@ -161,8 +161,25 @@ class Sequence:
         for box in boxes:
             box.sequence = self
 
-        self.key = self.get_contour().c_point
+        self.contour = None
+        self._set_contour()
+
+        self.key = self.contour.c_point
         self.patched_box_count = 0
+
+    def _set_contour(self):
+        """A Sequence's contour is a tetragon drawn around the Sequence's Boxes."""
+        top_line = self.get_top_line()
+        right_line = self.get_right_line()
+        bottom_line = self.get_bottom_line()
+        left_line = self.get_left_line()
+
+        self.contour = Tetragon(
+            get_intersection_point(top_line, left_line),
+            get_intersection_point(top_line, right_line),
+            get_intersection_point(bottom_line, right_line),
+            get_intersection_point(bottom_line, left_line),
+        )
 
     def get_top_line(self):
         """A line segment drawn through extreme top points of the Sequence's first and last Boxes."""
@@ -182,23 +199,9 @@ class Sequence:
         """The right vertical line of the Sequence's last Box."""
         return self.boxes[-1].get_right_vertical_line()
 
-    def get_contour(self):
-        """A Sequence's contour is a tetragon drawn around the Sequence's Boxes."""
-        top_line = self.get_top_line()
-        right_line = self.get_right_line()
-        bottom_line = self.get_bottom_line()
-        left_line = self.get_left_line()
-
-        return Tetragon(
-            get_intersection_point(top_line, left_line),
-            get_intersection_point(top_line, right_line),
-            get_intersection_point(bottom_line, right_line),
-            get_intersection_point(bottom_line, left_line),
-        )
-
     def get_padded_contour(self, padding):
         """Pads the Sequence's contour."""
-        contour = self.get_contour()
+        contour = self.contour
 
         return Tetragon(
             (contour.tl_point[0] - padding, contour.tl_point[1] - padding),
@@ -216,12 +219,14 @@ class Sequence:
         box.sequence = self
         self.boxes.insert(0, box)
         self.patched_box_count += patched_box_count
+        self._set_contour()
 
     def patch_append_box(self, box, patched_box_count=1):
         """Appends a Box when patching a Sequence with a missing Box: box box missing box."""
         box.sequence = self
         self.boxes.append(box)
         self.patched_box_count += patched_box_count
+        self._set_contour()
 
     def get_x_ds(self):
         """A list of Boxes' center point x deltas."""
@@ -275,7 +280,7 @@ class Sequence:
 
     def is_subsequence_of(self, sequence):
         """Is overlapping with the provided Sequence?"""
-        return sequence.get_contour().contains_point(self.get_contour().c_point)
+        return sequence.contour.contains_point(self.contour.c_point)
 
 
 class Box:
